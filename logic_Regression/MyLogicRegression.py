@@ -1,44 +1,61 @@
 import numpy as np
 
 
-class MyLogicRegression:
+def generate_batches(X, y, batch_size):
+    assert len(X) == len(y)
+    np.random.seed(42)
+    X = np.array(X)
+    y = np.array(y)
+    perm = np.random.permutation(len(X))
+
+    for batch_start in range(0, len(X), batch_size):
+        if batch_start + batch_size <= len(X) - 1:
+            yield X[perm[batch_start:batch_start + batch_size]], y[perm[batch_start:batch_start + batch_size]]
+
+
+class MyLogicRegression(object):
     def __init__(self):
-        self.w = []
+        self.w = None
 
-    def logit(self, X, w):
-        return X @ w
+    def fit(self, X, y, epochs=10, lr=0.1, batch_size=100):
+        if self.w is None:
+            np.random.seed(42)
+            self.w = np.random.randn(X.shape[1] + 1)
 
-    def sigmoid(self, X):
-        return 1 / (1 + np.exp(-X))
+        X_train = np.concatenate((np.ones((X.shape[0], 1)), X), axis=1)
 
-    # type : matrix || grad
-    def fit(self, X, y, epsilon=0.001, lr=0.01):
-        y_train = np.array(y)
-        X_train = np.array(X)
-        X_train = np.concatenate((np.ones((X_train.shape[0], 1)), X), axis=1)
+        losses = []
 
-        self.w = np.zeros((X_train.shape[1], 1))
+        for i in range(epochs):
+            for X_batch, y_batch in generate_batches(X_train, y, batch_size):
+                predictions = self._predict_proba_internal(X_batch)
+                loss = self.__loss(y_batch, predictions)
+                losses.append(loss)
 
-        for i in range(500):
-            print(self.loss(y_train, self.sigmoid(self.logit(X_train, self.w))))
-            self.w -= lr * self.grad_func(X_train, y_train)
+                self.w -= lr * self.grad(X_batch, y_batch, predictions)
 
-        return self
+        return losses
 
-    def grad_func(self, X_train, y_train):
-        grad = X_train.T @ (self.sigmoid(self.logit(X_train, self.w)) - y_train[:, np.newaxis])
-        return grad / X_train.shape[0]
+    def grad(self, X_batch, y_batch, predictions):
+        grad = X_batch.T @ (predictions - y_batch) / X_batch.shape[0]
+        return grad
 
     def predict_proba(self, X):
-        X_new = np.concatenate((np.ones((X.shape[0], 1)), X), axis=1)
-        return self.sigmoid(self.logit(X_new, self.w))
+        X_train = np.concatenate((np.ones((X.shape[0], 1)), X), axis=1)
+        return self.sigmoid(self.logit(X_train, self.w))
+
+    def _predict_proba_internal(self, X):
+        return self.sigmoid(self.logit(X, self.w))
 
     def predict(self, X, threshold=0.5):
         return self.predict_proba(X) >= threshold
 
-    def get_weights(self):
-        return self.w
+    def logit(self, X, w):
+        return np.dot(X, w)
 
-    def loss(self, y, p):
+    def sigmoid(self, X):
+        return 1 / (1 + np.exp(-X))
+
+    def __loss(self, y, p):
         p = np.clip(p, 1e-10, 1 - 1e-10)
-        return np.mean(y * np.log(p) + (1 - y) * np.log(1 - p))
+        return -np.sum(y * np.log(p) + (1 - y) * np.log(1 - p))

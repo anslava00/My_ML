@@ -43,6 +43,20 @@ def mse(y_predict, y_true):
         sum_mse += (y_t[i] - y_p[i]) ** 2
     return sum_mse / y_p.shape[0]
 
+def generate_batches(X, y, batch_size):
+    """
+    param X: np.array[n_objects, n_features] --- матрица объекты-признаки
+    param y: np.array[n_objects] --- вектор целевых переменных
+    """
+    assert len(X) == len(y)
+    np.random.seed(42)
+    X = np.array(X)
+    y = np.array(y)
+    perm = np.random.permutation(len(X))
+
+    for batch_start in range(0,len(X), batch_size):
+        if batch_start + batch_size <= len(X) - 1:
+            yield X[perm[batch_start:batch_start + batch_size]], y[perm[batch_start:batch_start + batch_size]]
 
 # Класс работает с DataFrame, не с list
 class Liner_regres:
