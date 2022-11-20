@@ -30,7 +30,7 @@ class DecisionTreeRegressor:
         self.sample = len(X)
         self.value = predict(y)
         self.mse_value = mse(y, self.value)
-        if len(y) == 1:
+        if len(y) == self.min_samples_leaf:
             return 0
         train_X_y = np.column_stack((np.array(X), np.array(y)))
         max_IG = None
@@ -46,17 +46,19 @@ class DecisionTreeRegressor:
         self.IG = max_IG
         left_branch = train_X_y[train_X_y[:, self.IG['index']] <= self.IG['value'], :]
         right_branch = train_X_y[train_X_y[:, self.IG['index']] > self.IG['value'], :]
-        self.left = DecisionTreeRegressor(level_tree=self.level_tree + 1)
-        self.right = DecisionTreeRegressor(level_tree=self.level_tree + 1)
+        self.left = DecisionTreeRegressor(min_samples_leaf=self.min_samples_leaf, level_tree=self.level_tree + 1)
+        self.right = DecisionTreeRegressor(min_samples_leaf=self.min_samples_leaf, level_tree=self.level_tree + 1)
 
         self.left.fit(left_branch[:, :-1], left_branch[:, -1])
         self.right.fit(right_branch[:, :-1], right_branch[:, -1])
+
+
 
     def print_tree(self):
         if self.left or self.right:
             print('deep_tree:', self.level_tree, '| node:', self.IG)
         else:
-            print('deep_tree:', self.level_tree, '| leaf:',  self.value)
+            print('deep_tree:', self.level_tree, '| leaf:',  self.value, '| sample:', self.sample)
 
         if self.left:
             self.left.print_tree()
@@ -67,7 +69,7 @@ class DecisionTreeRegressor:
 def main():
     df_house = pd.DataFrame(fetch_california_housing(as_frame=True).frame)
     train_df_house = df_house.loc[:, ['HouseAge', 'Population', 'MedHouseVal']].head(5)
-    tree_model = DecisionTreeRegressor()
+    tree_model = DecisionTreeRegressor(min_samples_leaf=1)
     tree_model.fit(X=train_df_house.loc[:, ['HouseAge', 'Population']], y=train_df_house['MedHouseVal'])
     tree_model.print_tree()
 
